@@ -1,4 +1,5 @@
 // Modified by KiloJoules for Capstone Project 2025
+// For Refreshable Braille Module
 
 package org.vosk.demo;
 
