@@ -1,16 +1,5 @@
-// Copyright 2019 Alpha Cephei Inc.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//       http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Modified by KiloJoules for Capstone Project 2025
+// For Refreshable Braille Module
 
 package org.vosk.demo;
 
@@ -39,8 +28,7 @@ import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
-public class VoskActivity extends Activity implements
-        RecognitionListener {
+public class VoskActivity extends Activity implements RecognitionListener {
 
     static private final int STATE_START = 0;
     static private final int STATE_READY = 1;
@@ -81,26 +69,26 @@ public class VoskActivity extends Activity implements
     }
 
     private void initModel() {
+        // Unpack the English language model
         StorageService.unpack(this, "model-en-us", "model",
                 (model) -> {
                     this.model = model;
                     setUiState(STATE_READY);
                 },
-                (exception) -> setErrorState("Failed to unpack the model" + exception.getMessage()));
+                (exception) -> setErrorState("Failed to unpack the model: " + exception.getMessage()));
     }
-
 
     @Override
     public void onRequestPermissionsResult(int requestCode,
-                                           @NonNull String[] permissions, @NonNull int[] grantResults) {
+                                           @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 
         if (requestCode == PERMISSIONS_REQUEST_RECORD_AUDIO) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // Recognizer initialization is a time-consuming and it involves IO,
-                // so we execute it in async task
                 initModel();
             } else {
+                setErrorState("Permission to record audio was denied");
                 finish();
             }
         }
@@ -117,6 +105,12 @@ public class VoskActivity extends Activity implements
 
         if (speechStreamService != null) {
             speechStreamService.stop();
+        }
+
+        // Clean up model if needed - using close() instead of release()
+        if (model != null) {
+            model.close();
+            model = null;
         }
     }
 
@@ -156,21 +150,21 @@ public class VoskActivity extends Activity implements
                 resultView.setMovementMethod(new ScrollingMovementMethod());
                 findViewById(R.id.recognize_file).setEnabled(false);
                 findViewById(R.id.recognize_mic).setEnabled(false);
-                findViewById(R.id.pause).setEnabled((false));
+                findViewById(R.id.pause).setEnabled(false);
                 break;
             case STATE_READY:
                 resultView.setText(R.string.ready);
                 ((Button) findViewById(R.id.recognize_mic)).setText(R.string.recognize_microphone);
                 findViewById(R.id.recognize_file).setEnabled(true);
                 findViewById(R.id.recognize_mic).setEnabled(true);
-                findViewById(R.id.pause).setEnabled((false));
+                findViewById(R.id.pause).setEnabled(false);
                 break;
             case STATE_DONE:
                 ((Button) findViewById(R.id.recognize_file)).setText(R.string.recognize_file);
                 ((Button) findViewById(R.id.recognize_mic)).setText(R.string.recognize_microphone);
                 findViewById(R.id.recognize_file).setEnabled(true);
                 findViewById(R.id.recognize_mic).setEnabled(true);
-                findViewById(R.id.pause).setEnabled((false));
+                findViewById(R.id.pause).setEnabled(false);
                 ((ToggleButton) findViewById(R.id.pause)).setChecked(false);
                 break;
             case STATE_FILE:
@@ -178,14 +172,14 @@ public class VoskActivity extends Activity implements
                 resultView.setText(getString(R.string.starting));
                 findViewById(R.id.recognize_mic).setEnabled(false);
                 findViewById(R.id.recognize_file).setEnabled(true);
-                findViewById(R.id.pause).setEnabled((false));
+                findViewById(R.id.pause).setEnabled(false);
                 break;
             case STATE_MIC:
                 ((Button) findViewById(R.id.recognize_mic)).setText(R.string.stop_microphone);
                 resultView.setText(getString(R.string.say_something));
                 findViewById(R.id.recognize_file).setEnabled(false);
                 findViewById(R.id.recognize_mic).setEnabled(true);
-                findViewById(R.id.pause).setEnabled((true));
+                findViewById(R.id.pause).setEnabled(true);
                 break;
             default:
                 throw new IllegalStateException("Unexpected value: " + state);
@@ -210,8 +204,7 @@ public class VoskActivity extends Activity implements
                 Recognizer rec = new Recognizer(model, 16000.f, "[\"one zero zero zero one\", " +
                         "\"oh zero one two three four five six seven eight nine\", \"[unk]\"]");
 
-                InputStream ais = getAssets().open(
-                        "10001-90210-01803.wav");
+                InputStream ais = getAssets().open("10001-90210-01803.wav");
                 if (ais.skip(44) != 44) throw new IOException("File too short");
 
                 speechStreamService = new SpeechStreamService(rec, ais, 16000);
@@ -239,11 +232,9 @@ public class VoskActivity extends Activity implements
         }
     }
 
-
     private void pause(boolean checked) {
         if (speechService != null) {
             speechService.setPause(checked);
         }
     }
-
 }
